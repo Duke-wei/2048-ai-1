@@ -77,6 +77,7 @@ func (a *AI) Search() grid.Direction {
 }
 
 // expect search implements
+//加入alpha-beta算法，其中alpha是优化下限，即在选手操作期间我们的优化目标尽量搜索使得alpha最大，而beta优化上限，是敌方操作时我们的优化目标，即尽量使beta最小
 func (a *AI) expectSearch(dept int,alpha,beta float64) float64 {
 	if dept == 0 {
 		return float64(a.score())
@@ -91,12 +92,9 @@ func (a *AI) expectSearch(dept int,alpha,beta float64) float64 {
 				if newScore := newAI.expectSearch(dept - 1,score,beta); newScore > score {
 					score = newScore
 				}
-				if score>alpha{
-					alpha = score
-				}
-				if alpha>beta{
+				if score>beta{
 					log.Println("player turn cut-off",alpha,"-",beta)
-					return alpha
+					return beta
 				}
 			}
 		}
@@ -104,27 +102,26 @@ func (a *AI) expectSearch(dept int,alpha,beta float64) float64 {
 		score = beta
 		// computer fill a number to grid now, it will try each vacant point with "2" or "4"
 		points := a.Grid.VacantPoints()
+		//如果没有空格可以填充则放回alpha
 		if len(points)==0{
-			return score
+			return alpha
 		}
 		for k,_ := range expectMap {
 			for _, point := range points {
 				newGrid := a.Grid.Clone()
 				newGrid.Data[point.X][point.Y] = k
 				// Change active, select a direction to move now.
-				//if smt:=newGrid.Smoothness(point.X,point.Y,k);smt==0{
-				//    continue
-				//}
+				//加入这行代码，即填补位置周围都是空时跳过该预测，减少迭代次数，可以很快达到2048，不过也很容易game over
+				if smt:=newGrid.Smoothness(point.X,point.Y,k);smt==0{
+				    continue
+				}
 				newAI := &AI{Grid: newGrid, Active: true}
 				if newScore := newAI.expectSearch(dept - 1,alpha,score);newScore<score{
 					score = newScore
 				}
-				if score<beta{
-					beta = score
-				}
 				if alpha>score{
 					log.Println("computer put cell,cut-off",alpha,"-",score)
-					return score
+					return alpha
 				}
 				//score += float64(newScore) * v
 			}
