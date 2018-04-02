@@ -2,6 +2,8 @@ package ai
 
 import (
 	"github.com/xwjdsh/2048-ai/grid"
+	"log"
+	"math/rand"
 )
 
 type AI struct {
@@ -62,45 +64,72 @@ func (a *AI) Search() grid.Direction {
 			// Could move.
 			// Active is false represent computer should fill number to grid now.
 			newAI := &AI{Grid: newGrid, Active: false}
-			if newScore := newAI.expectSearch(dept); newScore > bestScore {
+			if newScore := newAI.expectSearch(dept,-999999999,999999999); newScore > bestScore {
 				bestDire = dire
 				bestScore = newScore
 			}
 		}
 	}
+	if bestDire==grid.NONE{
+		bestDire = directions[rand.Intn(3)]
+	}
 	return bestDire
 }
 
 // expect search implements
-func (a *AI) expectSearch(dept int) float64 {
+func (a *AI) expectSearch(dept int,alpha,beta float64) float64 {
 	if dept == 0 {
 		return float64(a.score())
 	}
 	var score float64
 	if a.Active {
+		score = alpha
 		for _, d := range directions {
 			newGrid := a.Grid.Clone()
 			if newGrid.Move(d) {
 				newAI := &AI{Grid: newGrid, Active: false}
-				if newScore := newAI.expectSearch(dept - 1); newScore > score {
+				if newScore := newAI.expectSearch(dept - 1,score,beta); newScore > score {
 					score = newScore
+				}
+				if score>alpha{
+					alpha = score
+				}
+				if alpha>beta{
+					log.Println("player turn cut-off",alpha,"-",beta)
+					return alpha
 				}
 			}
 		}
 	} else {
+		score = beta
 		// computer fill a number to grid now, it will try each vacant point with "2" or "4"
 		points := a.Grid.VacantPoints()
-		for k, v := range expectMap {
+		if len(points)==0{
+			return score
+		}
+		for k,_ := range expectMap {
 			for _, point := range points {
 				newGrid := a.Grid.Clone()
 				newGrid.Data[point.X][point.Y] = k
 				// Change active, select a direction to move now.
+				//if smt:=newGrid.Smoothness(point.X,point.Y,k);smt==0{
+				//    continue
+				//}
 				newAI := &AI{Grid: newGrid, Active: true}
-				newScore := newAI.expectSearch(dept - 1)
-				score += float64(newScore) * v
+				if newScore := newAI.expectSearch(dept - 1,alpha,score);newScore<score{
+					score = newScore
+				}
+				if score<beta{
+					beta = score
+				}
+				if alpha>score{
+					log.Println("computer put cell,cut-off",alpha,"-",score)
+					return score
+				}
+				//score += float64(newScore) * v
 			}
 		}
-		score /= float64(len(points))
+		//score /= float64(len(points))
 	}
 	return score
 }

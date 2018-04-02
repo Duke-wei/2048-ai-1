@@ -47,6 +47,23 @@ func (g *Grid) VacantPoints() []utils.Point {
 	return points
 }
 
+func (g *Grid) Smoothness(x,y,k int) int{
+	ret := 4
+	if x>=1 && g.Data[x-1][y]==k{
+		ret--
+	}
+	if x<=2 && g.Data[x+1][y]==k{
+		ret--
+	}
+	if y>=1 && g.Data[x][y-1]==k{
+		ret--
+	}
+	if y<=2 && g.Data[x][y+1]==k{
+		ret--
+	}
+	return ret
+}
+
 func (g *Grid) Move(d Direction) bool {
 	originData := g.Data
 	data := &g.Data
